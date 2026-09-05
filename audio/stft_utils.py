@@ -6,29 +6,17 @@ WIN_LENGTH = 512
 
 
 def wav_to_mag_phase(waveform, n_fft=N_FFT, hop=HOP_LENGTH, win=WIN_LENGTH):
-    """Convert a batch of waveforms into magnitude and phase spectrograms.
 
-    Args:
-        waveform: float32 tensor of shape [B, T] or [T]
-        n_fft:    FFT size (controls frequency resolution)
-        hop:      hop length between successive STFT frames
-        win:      analysis window length
+    # waveform: float32 tensor [B, T], where B = batch size, T = number of audio samples(4 sec)
+    if len(waveform.shape) == 1: waveform = tf.expand_dims(waveform, axis=0)
 
-        Returns:
-        mag:   float32 tensor [B, time_frames, freq_bins] — amplitude at each time/freq
-        phase: float32 tensor [B, time_frames, freq_bins] — phase angle, kept for reconstruction
-    """
-    if len(waveform.shape) == 1:
-        waveform = tf.expand_dims(waveform, axis=0)
-
-    # tf.signal.stft output shape: [B, time_frames, freq_bins]
     stft_output = tf.signal.stft(
         waveform,
         frame_length=win,
         frame_step=hop,
         fft_length=n_fft,
         window_fn=tf.signal.hann_window
-    )
+    ) #shape: [B, time_frames, freq_bins]
 
 
     mag   = tf.abs(stft_output)
@@ -38,33 +26,14 @@ def wav_to_mag_phase(waveform, n_fft=N_FFT, hop=HOP_LENGTH, win=WIN_LENGTH):
 
 
 def mag_phase_to_wav(mag, phase, n_fft=N_FFT, hop=HOP_LENGTH, win=WIN_LENGTH, target_len=None):
-    """Reconstruct a waveform from magnitude and phase spectrograms.
 
-    The U-Net predicts an enhanced magnitude. We combine it with the original
-    noisy phase (which carries timing/structural information) to rebuild the
-    complex STFT, then invert it back to a waveform.
-
-       Args:
-        mag:        float32 tensor [B, time_frames, freq_bins]
-        phase:      float32 tensor [B, time_frames, freq_bins] (from the original noisy audio)
-        n_fft:      FFT size (must match what was used in wav_to_mag_phase)
-        hop:        hop length
-        win:        window length
-        target_len: optional int — trim output to exactly this many samples
-
-    Returns:
-        wav: float32 tensor [B, T]
-    """
-
-        # The U-Net decoder may produce a magnitude that is 1–2 bins smaller than
-    # the original phase due to _match_size crops on odd dimensions.
-    # Trim both to their minimum size before combining.
+    # U-Net decder can produce a magnitude that is 1–2 bins smaller than the original phase due to _match_size crops on odd dimensions.
     min_time = tf.minimum(tf.shape(mag)[1], tf.shape(phase)[1])
     min_freq = tf.minimum(tf.shape(mag)[2], tf.shape(phase)[2])
+
     mag   = mag[:, :min_time, :min_freq]
     phase = phase[:, :min_time, :min_freq]
     
-    # Combine enhanced magnitude with original phase: complex = mag * e^(j*phase)
     real = mag * tf.cos(phase)
     imag = mag * tf.sin(phase)
     stft_complex = tf.complex(real, imag)
@@ -82,7 +51,6 @@ def mag_phase_to_wav(mag, phase, n_fft=N_FFT, hop=HOP_LENGTH, win=WIN_LENGTH, ta
         window_fn=inverse_window_fn
     )
 
-    if target_len is not None:
-        wav = wav[:, :target_len]
+    if target_len is not None: wav = wav[:, :target_len]
 
     return wav
