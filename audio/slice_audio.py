@@ -40,14 +40,10 @@ def slice_audio(
             dtype="float32"
         )
 
-        # stereo -> mono
-        if clean_audio.ndim == 2:
-            clean_audio = clean_audio.mean(axis=1)
+        if clean_audio.ndim == 2: clean_audio = clean_audio.mean(axis=1)
+        if noisy_audio.ndim == 2: noisy_audio = noisy_audio.mean(axis=1)
 
-        if noisy_audio.ndim == 2:
-            noisy_audio = noisy_audio.mean(axis=1)
-
-        # handle tiny length mismatches
+        # tiny length mismatches
         min_len = min(len(clean_audio), len(noisy_audio))
         clean_audio = clean_audio[:min_len]
         noisy_audio = noisy_audio[:min_len]
@@ -56,8 +52,8 @@ def slice_audio(
 
         for start in range(0, min_len, segment_len):
 
-            clean_segment = clean_audio[start:start + segment_len]
-            noisy_segment = noisy_audio[start:start + segment_len]
+            clean_segment = clean_audio[start : start + segment_len]
+            noisy_segment = noisy_audio[start : start + segment_len]
 
             if len(clean_segment) < segment_len:
                 pad = segment_len - len(clean_segment)
@@ -65,6 +61,7 @@ def slice_audio(
                 clean_segment = np.pad(clean_segment, (0, pad))
                 noisy_segment = np.pad(noisy_segment, (0, pad))
 
+            
             name = f"{stem}_{start}.wav"
 
             sf.write(
