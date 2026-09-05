@@ -40,7 +40,7 @@ def load_model(weights_path):
     model = build_unet()
 
     # Dummy forward pass to trigger lazy weight initialization
-    dummy = tf.zeros([1, 257, 501, 1], dtype=tf.float32)
+    dummy = tf.zeros([1, 497, 257, 1], dtype=tf.float32)
     model(dummy, training=False)
 
     model.load_weights(weights_path)

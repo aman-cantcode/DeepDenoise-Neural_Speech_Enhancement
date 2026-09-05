@@ -53,7 +53,7 @@ Noisy Audio → STFT → Magnitude Spectrogram → U-Net → Enhanced Spectrogra
 A U-Net encoder–decoder with 4 skip connections, operating on log-magnitude spectrograms — engineered to balance global noise context with fine-grained frequency detail.
 
 ```
-Input [257 × 501 × 1]
+Input [497 × 257 × 1]
 │
 ├─ Encoder 1 → 16 ch ─┐
 ├─ Encoder 2 → 32 ch ─┼─┐

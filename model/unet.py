@@ -6,8 +6,8 @@ the clean magnitude given a noisy one. Skip connections from encoder to decoder
 help preserve fine-grained frequency detail that would otherwise be lost in the
 pooling layers.
 
-Input shape:  [batch, freq_bins, time_frames, 1]  (channels-last, single channel)
-Output shape: [batch, freq_bins, time_frames, 1]  (predicted clean magnitude)
+Input shape:  [batch, time_frames, freq_bins, 1]  (channels-last, single channel)
+Output shape: [batch, time_frames, freq_bins, 1]  (predicted clean magnitude)
 """
 
 import tensorflow as tf

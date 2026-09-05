@@ -62,7 +62,7 @@ def train_step(model, optimizer, noisy_batch, clean_batch):
         noisy_mag, _ = wav_to_mag_phase(noisy_batch)
         clean_mag, _ = wav_to_mag_phase(clean_batch)
 
-        # Add channel dimension: [B, F, T] → [B, F, T, 1]
+                # Add channel dimension: [B, T, F] → [B, T, F, 1]
         noisy_input  = tf.expand_dims(noisy_mag, axis=-1)
         clean_target = tf.expand_dims(clean_mag, axis=-1)
 
@@ -71,10 +71,10 @@ def train_step(model, optimizer, noisy_batch, clean_batch):
 
         # Trim both tensors to the same size. Tiny frame count differences can
         # arise because STFT frame count depends on exact signal length.
-        min_freq = tf.minimum(tf.shape(pred_mag)[1], tf.shape(clean_target)[1])
-        min_time = tf.minimum(tf.shape(pred_mag)[2], tf.shape(clean_target)[2])
-        pred_mag     = pred_mag[:, :min_freq, :min_time, :]
-        clean_target = clean_target[:, :min_freq, :min_time, :]
+        min_time = tf.minimum(tf.shape(pred_mag)[1], tf.shape(clean_target)[1])
+        min_freq = tf.minimum(tf.shape(pred_mag)[2], tf.shape(clean_target)[2])
+        pred_mag     = pred_mag[:, :min_time, :min_freq, :]
+        clean_target = clean_target[:, :min_time, :min_freq, :]
 
         # L1 loss: encourages sharp spectrogram prediction with fewer artefacts
         # than MSE, which tends to over-smooth high-frequency content.
@@ -119,7 +119,7 @@ def train():
     optimizer = tf.keras.optimizers.Adam(learning_rate=LEARNING_RATE)
 
     # Initialize weights with a dummy forward pass (TF lazy-initializes layers)
-    dummy = tf.zeros([1, 257, 501, 1], dtype=tf.float32)
+    dummy = tf.zeros([1, 497, 257, 1], dtype=tf.float32)
     model(dummy, training=False)
     print(f"  Model parameters: {model.count_params():,}")
 
