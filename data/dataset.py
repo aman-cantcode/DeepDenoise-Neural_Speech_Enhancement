@@ -1,18 +1,3 @@
-"""
-Dataset pipeline for speech enhancement training.
-
-Replaces PyTorch's Dataset + DataLoader with a tf.data pipeline.
-The pipeline reads paired (noisy, clean) audio files, pads or trims each
-clip to a fixed length, and batches them for training.
-
-Directory convention (both directories must have the same number of files,
-sorted so that noisy[i] corresponds to clean[i]):
-
-    data/
-    ├── noisy_4s/   ← noisy speech clips (e.g. speech + background noise)
-    └── clean_4s/   ← matching clean speech clips
-"""
-
 import os
 import glob
 
@@ -20,41 +5,29 @@ import numpy as np
 import soundfile as sf
 import tensorflow as tf
 
-MAX_AUDIO_LEN = 64000   # 4 seconds at 16 kHz
+MAX_AUDIO_LEN = 64000
 
 
-def _fix_length(audio, target_len):
-    """Pad with zeros or trim to reach exactly target_len samples."""
-    if len(audio) < target_len:
-        audio = np.pad(audio, (0, target_len - len(audio)))
-    else:
-        audio = audio[:target_len]
+def _fix_length(audio, target_len): # _func nomenclature?
+
+    if len(audio) < target_len: audio = np.pad(audio, (0, target_len - len(audio)))
+    else: audio = audio[:target_len]
+    
     return audio.astype(np.float32)
 
 
 def _load_pair(noisy_path, clean_path, max_len):
-    """Load one (noisy, clean) audio pair and fix both to max_len samples."""
+    #paths here coming from TensorFlow(bytes objects) rather than normal strings
     noisy, _ = sf.read(noisy_path.decode())
     clean, _ = sf.read(clean_path.decode())
+
     noisy = _fix_length(noisy, max_len)
     clean = _fix_length(clean, max_len)
+
     return noisy, clean
 
 
 def make_dataset(noisy_dir, clean_dir, batch_size=4, max_len=MAX_AUDIO_LEN, shuffle=True):
-    """Build a tf.data.Dataset for training or evaluation.
-
-    Args:
-        noisy_dir:  path to directory of noisy .wav files
-        clean_dir:  path to directory of clean .wav files
-        batch_size: number of audio clips per batch
-        max_len:    clip length in samples (pad/trim to this)
-        shuffle:    whether to shuffle the dataset each epoch
-
-    Returns:
-        tf.data.Dataset yielding (noisy_batch, clean_batch) tuples,
-        each of shape [batch_size, max_len]
-    """
     noisy_files = sorted(glob.glob(os.path.join(noisy_dir, "*.wav")))
     clean_files = sorted(glob.glob(os.path.join(clean_dir, "*.wav")))
 
@@ -68,7 +41,7 @@ def make_dataset(noisy_dir, clean_dir, batch_size=4, max_len=MAX_AUDIO_LEN, shuf
 
     print(f"  Found {len(noisy_files)} audio pairs in dataset.")
 
-    noisy_paths = tf.constant(noisy_files)
+    noisy_paths = tf.constant(noisy_files) #TensorFlow string tensor of file paths
     clean_paths = tf.constant(clean_files)
     
 
