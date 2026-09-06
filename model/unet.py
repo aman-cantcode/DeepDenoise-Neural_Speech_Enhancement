@@ -1,19 +1,5 @@
-"""
-U-Net architecture for speech enhancement.
-
-The model operates on magnitude spectrograms (2D images) and learns to predict
-the clean magnitude given a noisy one. Skip connections from encoder to decoder
-help preserve fine-grained frequency detail that would otherwise be lost in the
-pooling layers.
-
-Input shape:  [batch, time_frames, freq_bins, 1]  (channels-last, single channel)
-Output shape: [batch, time_frames, freq_bins, 1]  (predicted clean magnitude)
-"""
-
 import tensorflow as tf
-from tensorflow.keras.layers import (
-    Conv2D, Conv2DTranspose, MaxPooling2D, BatchNormalization
-)
+from tensorflow.keras.layers import Conv2D, Conv2DTranspose, MaxPooling2D, BatchNormalization
 
 
 class ConvBlock(tf.keras.layers.Layer):
@@ -37,6 +23,7 @@ class ConvBlock(tf.keras.layers.Layer):
 
 
 class UNet(tf.keras.Model):
+    """Construct and return the U-Net model."""
     """U-Net for speech enhancement.
 
     Encoder compresses the spectrogram through 4 stages, each halving the
@@ -106,16 +93,6 @@ class UNet(tf.keras.Model):
         x = tf.concat([x, skip], axis=-1)  # concatenate along channel axis
         return conv_block(x, training=training)
 
-    # @staticmethod
-    # def _match_size(x, target):
-    #     """Crop x to match target's spatial dimensions (freq and time axes).
-
-    #     Slight mismatches can occur after transposed convolution when input
-    #     dimensions are odd. Cropping is cheaper and more stable than padding.
-    #     """
-    #     target_h = tf.shape(target)[1]
-    #     target_w = tf.shape(target)[2]
-    #     return x[:, :target_h, :target_w, :]
     @staticmethod
     def _match_size(x, skip):
         min_h = tf.minimum(tf.shape(x)[1], tf.shape(skip)[1])
