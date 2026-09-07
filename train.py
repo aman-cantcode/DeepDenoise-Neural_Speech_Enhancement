@@ -141,10 +141,10 @@ def train():
     val_loss_metric = tf.keras.metrics.Mean()   
     best_val_loss   = float("inf")
 
-    for epoch in range(start_epoch, start_epoch + NUM_EPOCHS):
+    for epoch in range(start_epoch, NUM_EPOCHS):
         loss_metric.reset_state()
 
-        progress_bar = tqdm(train_dataset, desc=f"Epoch {epoch + 1:3d}/{start_epoch + NUM_EPOCHS}")
+        progress_bar = tqdm(train_dataset, desc=f"Epoch {epoch + 1:3d}/{NUM_EPOCHS}")
 
         for noisy_batch, clean_batch in progress_bar:
             batch_loss = train_step(model, optimizer, noisy_batch, clean_batch)

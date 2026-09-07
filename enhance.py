@@ -9,57 +9,15 @@ import tensorflow as tf
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from model.unet import build_unet
-from audio.stft_utils import wav_to_mag_phase, mag_phase_to_wav
+from audio.stft_utils import wav_to_mag_phase
+from audio.audio_utils import load_audio
+from audio.enhance_utils import load_model, enhance_audio
 from evaluation.metrics import calculate_metrics
 
 
 WEIGHTS_PATH = "weights/unet_tf_weights.weights.h5"
 SAMPLE_RATE = 16000
 
-
-def load_model(weights_path):
-
-    model = build_unet()
-
-    dummy = tf.zeros([1, 497, 257, 1], dtype=tf.float32)
-    model(dummy, training=False)
-
-    model.load_weights(weights_path)
-
-    print(f"  Model loaded from: {weights_path}")
-
-    return model
-
-
-def enhance(model, noisy_wav):
-
-    original_length = len(noisy_wav)
-
-    # [T] → [1, T]  # batch
-    noisy_tensor = tf.constant(noisy_wav[np.newaxis, :], dtype=tf.float32)
-
-    magnitude, phase = wav_to_mag_phase(noisy_tensor)
-
-    # [1, T, F] → [1, T, F, 1]  # channel
-    magnitude = tf.expand_dims(magnitude, axis=-1)
-
-    enhanced_magnitude = model(magnitude, training=False)
-
-    # [1, T, F, 1] → [1, T, F]  # remove channel
-    enhanced_magnitude = tf.squeeze(
-        enhanced_magnitude,
-        axis=-1
-    )
-
-    enhanced_wav = mag_phase_to_wav(
-        enhanced_magnitude,
-        phase,
-        target_len=original_length
-    )
-
-    # [1, T] → [T]
-    return enhanced_wav[0].numpy()
 
 
 def get_spectrogram(audio):
@@ -289,10 +247,7 @@ def main():
 
     model = load_model(args.weights)
 
-    noisy, sample_rate = sf.read(args.input)
-
-    if noisy.ndim > 1: noisy = noisy.mean(axis=1)
-    noisy = noisy.astype(np.float32)
+    noisy, sample_rate = load_audio(args.input)
 
     print(
         f"  Input: {args.input} "
@@ -302,7 +257,7 @@ def main():
 
     print("  Enhancing...")
 
-    enhanced = enhance(
+    enhanced = enhance_audio(
         model,
         noisy
     )
@@ -338,10 +293,7 @@ def main():
 
     if args.clean:
 
-        clean, clean_sample_rate = sf.read(args.clean)
-
-        if clean.ndim > 1: clean = clean.mean(axis=1)
-        clean = clean.astype(np.float32)
+        clean, clean_sample_rate = load_audio(args.clean)
 
         min_length = min(len(clean), len(enhanced))
 

@@ -1,7 +1,9 @@
 import os
 import random
-import numpy as np
 import soundfile as sf
+import numpy as np
+
+from audio.audio_utils import load_audio
 
 VALID_SPLIT = 0.1
 SEED        = 42
@@ -38,12 +40,8 @@ def slice_audio(
 
     for clean_file, noisy_file in zip(clean_files, noisy_files):
 
-        clean_audio, _ = sf.read(os.path.join(input_clean_dir, clean_file), dtype="float32")
-        noisy_audio, _ = sf.read(os.path.join(input_noisy_dir, noisy_file), dtype="float32")
-
-        #streo -> mono
-        if clean_audio.ndim == 2: clean_audio = clean_audio.mean(axis=1)
-        if noisy_audio.ndim == 2: noisy_audio = noisy_audio.mean(axis=1)
+        clean_audio, _ = load_audio(os.path.join(input_clean_dir, clean_file))
+        noisy_audio, _ = load_audio(os.path.join(input_noisy_dir, noisy_file))
 
         min_len = min(len(clean_audio), len(noisy_audio))
         clean_audio = clean_audio[:min_len]

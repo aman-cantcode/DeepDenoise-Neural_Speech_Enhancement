@@ -1,28 +1,22 @@
 import os
 import glob
 
-import numpy as np
-import soundfile as sf
 import tensorflow as tf
+
+from audio.audio_utils import load_audio, fix_length
 
 MAX_AUDIO_LEN = 64000
 
 
-def _fix_length(audio, target_len): # _func nomenclature?
 
-    if len(audio) < target_len: audio = np.pad(audio, (0, target_len - len(audio)))
-    else: audio = audio[:target_len]
-    
-    return audio.astype(np.float32)
+def _load_pair(noisy_path, clean_path, max_len): # _func nomenclature?
 
-
-def _load_pair(noisy_path, clean_path, max_len):
     #paths here coming from TensorFlow(bytes objects) rather than normal strings
-    noisy, _ = sf.read(noisy_path.decode())
-    clean, _ = sf.read(clean_path.decode())
+    noisy, _ = load_audio(noisy_path.decode())
+    clean, _ = load_audio(clean_path.decode())
 
-    noisy = _fix_length(noisy, max_len)
-    clean = _fix_length(clean, max_len)
+    noisy = fix_length(noisy, max_len)
+    clean = fix_length(clean, max_len)
 
     return noisy, clean
 
@@ -68,3 +62,5 @@ def make_dataset(noisy_dir, clean_dir, batch_size=4, max_len=MAX_AUDIO_LEN, shuf
     )
 
     return dataset
+
+
