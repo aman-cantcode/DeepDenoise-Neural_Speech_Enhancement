@@ -18,8 +18,6 @@ CHECKPOINT_INTERVAL  = 5
 GRADIENT_CLIP_NORM   = 1.0
 WEIGHTS_DIR          = "weights"
 
-RESUME_FROM          = "weights/unet_tf_weights.weights.h5"
-
 
 
 @tf.function
@@ -74,21 +72,33 @@ def train():
     model     = build_unet()
     optimizer = tf.keras.optimizers.Adam(learning_rate=LEARNING_RATE)
 
+
     # Initialize weights with a dummy forward pass (TF lazy-initializes layers)
     dummy = tf.zeros([1, 497, 257, 1], dtype=tf.float32)
     model(dummy, training=False)
     print(f"  Model parameters: {model.count_params():,}")
 
+
     start_epoch = 0
-    if RESUME_FROM:
-        if not os.path.exists(RESUME_FROM):
-            sys.exit(f"Checkpoint not found: {RESUME_FROM}")
-        model.load_weights(RESUME_FROM)
-        try:
-            start_epoch = int(RESUME_FROM.split("epoch_")[-1].replace(".h5", ""))
-        except ValueError:
-            start_epoch = 0
-        print(f"  Resumed from: {RESUME_FROM}  (starting at epoch {start_epoch + 1})")
+
+    checkpoints = [
+        f for f in os.listdir(WEIGHTS_DIR)
+        if f.startswith("checkpoint_epoch_") and f.endswith(".weights.h5")
+    ]
+
+    if checkpoints:
+        latest = max(
+            checkpoints,
+            key=lambda x: int(x.split("epoch_")[1].split(".")[0])
+        )
+
+        start_epoch = int(latest.split("epoch_")[1].split(".")[0])
+        resume_path = os.path.join(WEIGHTS_DIR, latest)
+
+        model.load_weights(resume_path)
+
+        print(f"  Resumed from: {resume_path}")
+        print(f"  Starting at epoch {start_epoch + 1}")
 
 
     print("\n" + "=" * 60)
