@@ -93,9 +93,7 @@ def split_and_slice(
     segment_seconds=4,
     sample_rate=16000,
 ):
-    # Split by whole recording BEFORE slicing into segments, so segments from
-    # the same recording never land on both sides — that would leak info
-    # between train and validation (neighboring segments look almost identical)
+    
     clean_files = sorted(
         f for f in os.listdir(input_clean_dir)
         if f.endswith(".wav")
