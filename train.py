@@ -4,19 +4,22 @@ import tensorflow as tf
 from tqdm import tqdm
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from model.unet       import build_unet
+from model.unet       import build_unet, match_size
 from audio.stft_utils import wav_to_mag_phase
 from data.dataset     import make_dataset
 
 
 NOISY_DIR            = "dataset/train/noisy"
 CLEAN_DIR            = "dataset/train/clean"
+VALID_NOISY_DIR      = "dataset/valid/noisy"
+VALID_CLEAN_DIR      = "dataset/valid/clean"
 BATCH_SIZE           = 4
 LEARNING_RATE        = 1e-4
 NUM_EPOCHS           = 30
 CHECKPOINT_INTERVAL  = 5
 GRADIENT_CLIP_NORM   = 1.0
 WEIGHTS_DIR          = "weights"
+SEED                 = 42
 
 
 
@@ -33,10 +36,7 @@ def train_step(model, optimizer, noisy_batch, clean_batch):
 
         pred_mag = model(noisy_input, training=True)
 
-        min_time = tf.minimum(tf.shape(pred_mag)[1], tf.shape(clean_target)[1])
-        min_freq = tf.minimum(tf.shape(pred_mag)[2], tf.shape(clean_target)[2])
-        pred_mag     = pred_mag[:, :min_time, :min_freq, :]
-        clean_target = clean_target[:, :min_time, :min_freq, :]
+        pred_mag, clean_target = match_size(pred_mag, clean_target)
 
         loss = tf.reduce_mean(tf.abs(pred_mag - clean_target))
 
@@ -49,10 +49,34 @@ def train_step(model, optimizer, noisy_batch, clean_batch):
     return loss
 
 
+@tf.function
+def valid_step(model, noisy_batch, clean_batch):
+
+    noisy_mag, _ = wav_to_mag_phase(noisy_batch)
+    clean_mag, _ = wav_to_mag_phase(clean_batch)
+
+    noisy_input  = tf.expand_dims(noisy_mag, axis=-1)
+    clean_target = tf.expand_dims(clean_mag, axis=-1)
+
+    pred_mag = model(noisy_input, training=False)
+
+    pred_mag, clean_target = match_size(pred_mag, clean_target)
+
+    loss = tf.reduce_mean(tf.abs(pred_mag - clean_target))
+
+    return loss
+
+
 def train():
+    tf.random.set_seed(SEED)
+
     os.makedirs(WEIGHTS_DIR, exist_ok=True)
 
     gpus = tf.config.list_physical_devices("GPU")
+    for gpu in gpus:
+        # Grow VRAM usage as needed instead of grabbing it all upfront
+        tf.config.experimental.set_memory_growth(gpu, True)
+
     device_name = f"{len(gpus)} GPU(s)" if gpus else "CPU"
     print("=" * 60)
     print(f"  Device:        {device_name}")
@@ -67,6 +91,13 @@ def train():
         clean_dir=CLEAN_DIR,
         batch_size=BATCH_SIZE,
         shuffle=True
+    )
+
+    valid_dataset = make_dataset(
+        noisy_dir=VALID_NOISY_DIR,
+        clean_dir=VALID_CLEAN_DIR,
+        batch_size=BATCH_SIZE,
+        shuffle=False
     )
 
     model     = build_unet()
@@ -105,25 +136,43 @@ def train():
     print("Starting training...")
     print("=" * 60 + "\n")
 
+    # running average losses, reset every epoch
+    loss_metric     = tf.keras.metrics.Mean()  
+    val_loss_metric = tf.keras.metrics.Mean()   
+    best_val_loss   = float("inf")
+
     for epoch in range(start_epoch, start_epoch + NUM_EPOCHS):
-        epoch_loss   = 0.0
-        num_batches  = 0
+        loss_metric.reset_state()
 
         progress_bar = tqdm(train_dataset, desc=f"Epoch {epoch + 1:3d}/{start_epoch + NUM_EPOCHS}")
 
         for noisy_batch, clean_batch in progress_bar:
             batch_loss = train_step(model, optimizer, noisy_batch, clean_batch)
-            epoch_loss  += batch_loss.numpy()
-            num_batches += 1
+            loss_metric.update_state(batch_loss)
             progress_bar.set_postfix({"loss": f"{batch_loss.numpy():.4f}"})
 
-        avg_loss = epoch_loss / max(num_batches, 1)
-        print(f"  Epoch {epoch + 1:3d} | Avg Loss: {avg_loss:.4f}")
+        avg_loss = loss_metric.result().numpy()
+
+        # Run validation: no gradient updates, BatchNorm in inference mode
+        val_loss_metric.reset_state()
+        for noisy_batch, clean_batch in valid_dataset:
+            batch_val_loss = valid_step(model, noisy_batch, clean_batch)
+            val_loss_metric.update_state(batch_val_loss)
+
+        avg_val_loss = val_loss_metric.result().numpy()
+
+        print(f"  Epoch {epoch + 1:3d} | Train Loss: {avg_loss:.4f} | Val Loss: {avg_val_loss:.4f}")
+
+        if avg_val_loss < best_val_loss:
+            best_val_loss = avg_val_loss
+            best_path = os.path.join(WEIGHTS_DIR, "unet_tf_weights_best.weights.h5")
+            model.save_weights(best_path)
+            print(f"  New best val loss — saved → {best_path}")
 
         if (epoch + 1) % CHECKPOINT_INTERVAL == 0:
             ckpt_path = os.path.join(WEIGHTS_DIR, f"checkpoint_epoch_{epoch + 1}.weights.h5")
             model.save_weights(ckpt_path)
-            print(f"  ✓ Checkpoint saved → {ckpt_path}")
+            print(f"  Checkpoint saved → {ckpt_path}")
 
     final_path = os.path.join(WEIGHTS_DIR, "unet_tf_weights.weights.h5")
     model.save_weights(final_path)
