@@ -98,7 +98,7 @@ def build_unet():
     d1 = upsample_and_fuse(d2, e1, 16)
 
 
-    outputs = Conv2D(1, kernel_size=1, padding="same", activation="relu")(d1)
+    outputs = Conv2D(1, kernel_size=1, padding="same")(d1)
     outputs = Lambda(_match_input_size)([outputs, inputs])
 
     model = tf.keras.Model(inputs=inputs, outputs=outputs)
