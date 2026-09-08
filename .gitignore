@@ -1,11 +1,11 @@
-# Virtual environment
+# Virtual environmentd
+venv/
 .venv/
 __pycache__/
 *.pyc
 
 # Generated outputs — disposable
-outputs/*
-!outputs/**/.gitkeep
+outputs/
 
 # Training data — too large
 dataset/train/noisy/*
@@ -14,6 +14,8 @@ dataset/test/noisy/*
 dataset/test/clean/*
 dataset/raw/noisy/*
 dataset/raw/clean/*
+dataset/valid/noisy/*
+dataset/valid/clean/*
 !dataset/**/.gitkeep
 
 
