@@ -21,6 +21,9 @@ def slice_audio(
     os.makedirs(output_clean_dir, exist_ok=True)
     os.makedirs(output_noisy_dir, exist_ok=True)
 
+    if segment_seconds <= 0 or sample_rate <= 0:
+        raise ValueError("segment_seconds and sample_rate must be positive")
+
     if file_names is None:
         clean_files = sorted(
             f for f in os.listdir(input_clean_dir)
@@ -32,13 +35,34 @@ def slice_audio(
             if f.endswith(".wav")
         )
     else:
-        clean_files = noisy_files = file_names
+        clean_files = list(file_names)
+        noisy_files = list(file_names)
+
+        missing_clean = [
+            name for name in clean_files
+            if not os.path.isfile(os.path.join(input_clean_dir, name))
+        ]
+        missing_noisy = [
+            name for name in noisy_files
+            if not os.path.isfile(os.path.join(input_noisy_dir, name))
+        ]
+        if missing_clean or missing_noisy:
+            raise FileNotFoundError(
+                f"Missing clean files: {missing_clean}; "
+                f"missing noisy files: {missing_noisy}"
+            )
+
+    clean_names = set(clean_files)
+    noisy_names = set(noisy_files)
+    if clean_names != noisy_names:
+        raise ValueError("Clean and noisy recordings must have matching filenames")
 
     segment_len = segment_seconds * sample_rate
 
     total_segments = 0
 
-    for clean_file, noisy_file in zip(clean_files, noisy_files):
+    for clean_file in clean_files:
+        noisy_file = clean_file
 
         clean_audio, _ = load_audio(os.path.join(input_clean_dir, clean_file))
         noisy_audio, _ = load_audio(os.path.join(input_noisy_dir, noisy_file))

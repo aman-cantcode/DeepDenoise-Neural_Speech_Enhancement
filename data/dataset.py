@@ -27,11 +27,18 @@ def make_dataset(noisy_dir, clean_dir, batch_size=4, max_len=MAX_AUDIO_LEN, shuf
 
     if len(noisy_files) == 0:
         raise FileNotFoundError(f"No .wav files found in: {noisy_dir}")
-    if len(noisy_files) != len(clean_files):
+    noisy_by_name = {os.path.basename(path): path for path in noisy_files}
+    clean_by_name = {os.path.basename(path): path for path in clean_files}
+    if set(noisy_by_name) != set(clean_by_name):
+        missing_noisy = sorted(set(clean_by_name) - set(noisy_by_name))
+        missing_clean = sorted(set(noisy_by_name) - set(clean_by_name))
         raise ValueError(
-            f"Noisy ({len(noisy_files)}) and clean ({len(clean_files)}) "
-            "directories must have the same number of files."
+            "Noisy and clean directories must contain matching filenames. "
+            f"Missing noisy: {missing_noisy}; missing clean: {missing_clean}"
         )
+
+    noisy_files = [noisy_by_name[name] for name in sorted(noisy_by_name)]
+    clean_files = [clean_by_name[name] for name in sorted(clean_by_name)]
 
     print(f"  Found {len(noisy_files)} audio pairs in dataset.")
 
@@ -57,7 +64,7 @@ def make_dataset(noisy_dir, clean_dir, batch_size=4, max_len=MAX_AUDIO_LEN, shuf
     dataset = (
         path_dataset
         .map(load_pair_tf, num_parallel_calls=tf.data.AUTOTUNE)
-        .batch(batch_size, drop_remainder=True)
+        .batch(batch_size, drop_remainder=False)
         .prefetch(tf.data.AUTOTUNE)
     )
 

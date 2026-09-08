@@ -1,0 +1,3 @@
+STOI: Noisy=0.8019, Enhanced=0.4514, Improvement=-0.3505
+PESQ: Noisy=1.2297, Enhanced=1.1449, Improvement=-0.0848
+SNR: Noisy=6.1014, Enhanced=3.9048, Improvement=-2.1966

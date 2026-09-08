@@ -51,6 +51,10 @@ def mag_phase_to_wav(mag, phase, n_fft=N_FFT, hop=HOP_LENGTH, win=WIN_LENGTH, ta
         window_fn=inverse_window_fn
     )
 
-    if target_len is not None: wav = wav[:, :target_len]
+    if target_len is not None:
+        current_len = tf.shape(wav)[1]
+        padding = tf.maximum(target_len - current_len, 0)
+        wav = tf.pad(wav, [[0, 0], [0, padding]])
+        wav = wav[:, :target_len]
 
     return wav

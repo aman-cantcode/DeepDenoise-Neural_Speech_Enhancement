@@ -1,13 +1,15 @@
 import os
 import sys
 import argparse
+from pathlib import Path
 
 import numpy as np
 import soundfile as sf
 import matplotlib.pyplot as plt
 import tensorflow as tf
 
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+BASE_DIR = Path(__file__).resolve().parent
+sys.path.insert(0, str(BASE_DIR))
 
 from audio.stft_utils import wav_to_mag_phase
 from audio.audio_utils import load_audio
@@ -15,7 +17,7 @@ from audio.enhance_utils import load_model, enhance_audio
 from evaluation.metrics import calculate_metrics
 
 
-WEIGHTS_PATH = "weights/unet_tf_weights.weights.h5"
+WEIGHTS_PATH = str(BASE_DIR / "weights/unet_tf_weights.weights.h5")
 SAMPLE_RATE = 16000
 
 
@@ -239,15 +241,16 @@ def main():
     print("  Speech Enhancement Inference")
     print("=" * 60)
 
-    if not os.path.exists(args.weights):
+    weights_path = os.path.abspath(args.weights)
+    if not os.path.exists(weights_path):
         sys.exit(
-            f"Weights not found: {args.weights}\n"
+            f"Weights not found: {weights_path}\n"
             "Train the model first."
         )
 
-    model = load_model(args.weights)
+    model = load_model(weights_path)
 
-    noisy, sample_rate = load_audio(args.input)
+    noisy, sample_rate = load_audio(args.input, expected_sample_rate=SAMPLE_RATE)
 
     print(
         f"  Input: {args.input} "
@@ -266,7 +269,7 @@ def main():
     file_name_without_extension = os.path.splitext(file_name)[0]
 
     results_dir = os.path.join(
-        "samples",
+        str(BASE_DIR / "samples"),
         "outputs",
         file_name_without_extension
     )
@@ -293,7 +296,10 @@ def main():
 
     if args.clean:
 
-        clean, clean_sample_rate = load_audio(args.clean)
+        clean, clean_sample_rate = load_audio(
+            args.clean,
+            expected_sample_rate=SAMPLE_RATE
+        )
 
         min_length = min(len(clean), len(enhanced))
 

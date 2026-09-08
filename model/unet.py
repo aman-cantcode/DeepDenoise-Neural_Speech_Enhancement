@@ -5,7 +5,8 @@ from tensorflow.keras.layers import (
     MaxPooling2D,
     BatchNormalization,
     ReLU,
-    Concatenate
+    Concatenate,
+    Lambda
 )
 
 
@@ -23,22 +24,33 @@ def conv_block(x, filters):
 
 
 
+def _match_size(inputs):
+    x, skip = inputs
+
+    min_height = tf.minimum(tf.shape(x)[1], tf.shape(skip)[1])
+    min_width = tf.minimum(tf.shape(x)[2], tf.shape(skip)[2])
+
+    return (
+        x[:, :min_height, :min_width, :],
+        skip[:, :min_height, :min_width, :]
+    )
+
+
+def _match_input_size(inputs):
+    output, reference = inputs
+    return tf.image.resize_with_crop_or_pad(
+        output,
+        tf.shape(reference)[1],
+        tf.shape(reference)[2]
+    )
+
+
 def match_size(x, skip):
 
-    x_height = tf.shape(x)[1]
-    x_width = tf.shape(x)[2]
+    if tf.keras.backend.is_keras_tensor(x):
+        return Lambda(_match_size)([x, skip])
 
-    skip_height = tf.shape(skip)[1]
-    skip_width = tf.shape(skip)[2]
-
-
-    min_height = tf.minimum(x_height, skip_height)
-    min_width = tf.minimum(x_width, skip_width)
-
-    x = x[:, :min_height, :min_width, :]
-    skip = skip[:, :min_height, :min_width, :]
-
-    return x, skip
+    return _match_size([x, skip])
 
 
 def upsample_and_fuse(x, skip, filters):
@@ -86,7 +98,8 @@ def build_unet():
     d1 = upsample_and_fuse(d2, e1, 16)
 
 
-    outputs = Conv2D(1, kernel_size=1, padding="same")(d1)
+    outputs = Conv2D(1, kernel_size=1, padding="same", activation="relu")(d1)
+    outputs = Lambda(_match_input_size)([outputs, inputs])
 
     model = tf.keras.Model(inputs=inputs, outputs=outputs)
 

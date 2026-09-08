@@ -1,22 +1,24 @@
 import os
 import sys
+from pathlib import Path
 
 import numpy as np
 import soundfile as sf
 import matplotlib.pyplot as plt
 
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+BASE_DIR = Path(__file__).resolve().parent
+sys.path.insert(0, str(BASE_DIR))
 
 from audio.audio_utils import load_audio
 from audio.enhance_utils import load_model, enhance_audio
 from evaluation.metrics import calculate_metrics
 
 
-WEIGHTS_PATH = "weights/unet_tf_weights.weights.h5"
-CLEAN_DIR = "dataset/test/clean"
-NOISY_DIR = "dataset/test/noisy"
+WEIGHTS_PATH = str(BASE_DIR / "weights/unet_tf_weights.weights.h5")
+CLEAN_DIR = str(BASE_DIR / "dataset/test/clean")
+NOISY_DIR = str(BASE_DIR / "dataset/test/noisy")
 
-OUTPUT_DIR = "dataset/test/outputs"
+OUTPUT_DIR = str(BASE_DIR / "dataset/test/outputs")
 ENHANCED_DIR = os.path.join(OUTPUT_DIR, "enhanced")
 CHARTS_DIR = os.path.join(OUTPUT_DIR, "charts")
 
@@ -117,6 +119,11 @@ def evaluate():
         print("Weights file not found:", WEIGHTS_PATH)
         return
 
+    if not os.path.isdir(CLEAN_DIR) or not os.path.isdir(NOISY_DIR):
+        raise FileNotFoundError(
+            f"Test directories not found: {CLEAN_DIR}, {NOISY_DIR}"
+        )
+
     print("\nStarting evaluation...\n")
 
     model = load_model(WEIGHTS_PATH)
@@ -135,6 +142,9 @@ def evaluate():
         f for f in clean_files
         if f in noisy_files
     ]
+
+    if not files:
+        raise ValueError("No matching .wav files found in the test directories")
 
     print(f"Number of test files: {len(files)}\n")
 
@@ -156,8 +166,8 @@ def evaluate():
 
         noisy_path = os.path.join(NOISY_DIR, filename)
 
-        clean, _ = load_audio(clean_path)
-        noisy, _ = load_audio(noisy_path)
+        clean, _ = load_audio(clean_path, expected_sample_rate=SAMPLE_RATE)
+        noisy, _ = load_audio(noisy_path, expected_sample_rate=SAMPLE_RATE)
 
         enhanced = enhance_audio(
             model,

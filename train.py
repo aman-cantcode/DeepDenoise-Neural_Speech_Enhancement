@@ -1,24 +1,27 @@
 import os
 import sys
+from pathlib import Path
 import tensorflow as tf
 from tqdm import tqdm
 
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+BASE_DIR = Path(__file__).resolve().parent
+sys.path.insert(0, str(BASE_DIR))
 from model.unet       import build_unet, match_size
 from audio.stft_utils import wav_to_mag_phase
+from audio.enhance_utils import load_weights
 from data.dataset     import make_dataset
 
 
-NOISY_DIR            = "dataset/train/noisy"
-CLEAN_DIR            = "dataset/train/clean"
-VALID_NOISY_DIR      = "dataset/valid/noisy"
-VALID_CLEAN_DIR      = "dataset/valid/clean"
+NOISY_DIR            = str(BASE_DIR / "dataset/train/noisy")
+CLEAN_DIR            = str(BASE_DIR / "dataset/train/clean")
+VALID_NOISY_DIR      = str(BASE_DIR / "dataset/valid/noisy")
+VALID_CLEAN_DIR      = str(BASE_DIR / "dataset/valid/clean")
 BATCH_SIZE           = 4
 LEARNING_RATE        = 1e-4
 NUM_EPOCHS           = 30
 CHECKPOINT_INTERVAL  = 5
 GRADIENT_CLIP_NORM   = 1.0
-WEIGHTS_DIR          = "weights"
+WEIGHTS_DIR          = str(BASE_DIR / "weights")
 SEED                 = 42
 
 
@@ -100,6 +103,11 @@ def train():
         shuffle=False
     )
 
+    if tf.data.experimental.cardinality(train_dataset).numpy() == 0:
+        raise ValueError("Training dataset contains no batches")
+    if tf.data.experimental.cardinality(valid_dataset).numpy() == 0:
+        raise ValueError("Validation dataset contains no batches")
+
     model     = build_unet()
     optimizer = tf.keras.optimizers.Adam(learning_rate=LEARNING_RATE)
 
@@ -126,7 +134,7 @@ def train():
         start_epoch = int(latest.split("epoch_")[1].split(".")[0])
         resume_path = os.path.join(WEIGHTS_DIR, latest)
 
-        model.load_weights(resume_path)
+        load_weights(model, resume_path)
 
         print(f"  Resumed from: {resume_path}")
         print(f"  Starting at epoch {start_epoch + 1}")
