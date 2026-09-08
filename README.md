@@ -17,7 +17,7 @@
 ## Highlights
 
 - **U-Net architecture** designed and implemented from scratch in TensorFlow/Keras — no pretrained backbones
-- **Trained on 60 GB** of paired noisy/clean speech across three benchmark corpora
+- **Trained on ~20 GB** of paired noisy/clean speech across three benchmark corpora
 - **PESQ improved by +0.74** and **SNR by +4.81 dB** on held-out test data
 - **Full signal-processing pipeline** — STFT analysis, spectrogram-domain enhancement, ISTFT synthesis
 - **Systematic Engineering Workflow** — modular codebase, custom training loop, automated batch evaluation with quantitative reporting
@@ -88,7 +88,7 @@ Speech enhancement in the spectrogram domain is structurally identical to image 
 | **LibriSpeech** | Additional clean speech for diversity |
 | **MUSAN** | Real-world noise — babble, ambient, music |
 
-**~60 GB** combined · resampled to 16 kHz mono · sliced into 4-second training segments
+**19.87/~60 GB** used · resampled to 16 kHz mono · sliced into 4-second training segments
 
 </div>
 
@@ -108,24 +108,37 @@ Speech enhancement in the spectrogram domain is structurally identical to image 
 
 ```
 DeepDenoise/
-├── model/unet.py U-Net architecture
-├── audio/
-│ ├── stft_utils.py STFT ↔ waveform conversion
-│ └── slice_audio.py Slice long recordings into 4s clips
-├── data/dataset.py tf.data training pipeline
-├── evaluation/metrics.py STOI, PESQ, SNR
-│
-├── weights/ Trained model weights
-├── dataset/ Training & test audio (not tracked in git)
-│ ├── train/{clean,noisy}/
-│ └── test/{clean,noisy}/
-├── samples/ Demo audio for quick testing
-├── outputs/ Generated results (enhanced audio, charts, reports)
-│
-├── train.py Train the model
-├── enhance.py Enhance a single file
-├── evaluate.py Batch evaluation with metrics + charts
-└── requirements.txt
+├── audio/                            # Audio processing modules
+│   ├── audio_utils.py                # General audio utilities
+│   ├── enhance_utils.py              # Enhancement helper functions
+│   ├── slice_audio.py                # Slice long recordings into 4s clips
+│   └── stft_utils.py                 # STFT ↔ waveform conversion
+├── data/
+│   └── dataset.py                    # tf.data training pipeline
+├── dataset/                          # Audio datasets
+│   ├── raw/                          # Original unsplit audio files
+│   │   ├── clean/
+│   │   └── noisy/
+│   ├── test/                         # Testing data splits
+│   │   ├── clean/
+│   │   └── noisy/
+│   ├── train/                        # Training data splits
+│   │   ├── clean/
+│   │   └── noisy/
+│   └── valid/                        # Validation data splits
+│       ├── clean/
+│       └── noisy/
+├── evaluation/
+│   └── metrics.py                    # STOI, PESQ, SNR calculations
+├── model/
+│   └── unet.py                       # U-Net architecture
+├── samples/                          # Demo audio for quick testing
+│   └── outputs/                      # Generated enhancement results
+├── weights/                          # Trained model weights
+├── enhance.py                        # Enhance a single file
+├── evaluate.py                       # Batch evaluation with metrics + charts
+├── train.py                          # Train the model
+└── requirements.txt                  # Project dependencies
 ```
 
 ---
@@ -140,6 +153,11 @@ python -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
+**Slice raw/ into train/ + valid/:**
+```bash
+#from root dir
+python -m audio.slice_audio
+```
 **Enhance a file:**
 ```bash
 python enhance.py --input samples/noisy_demo.wav
