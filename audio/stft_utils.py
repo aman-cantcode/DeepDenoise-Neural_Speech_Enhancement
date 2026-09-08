@@ -18,6 +18,8 @@ def wav_to_mag_phase(waveform, n_fft=N_FFT, hop=HOP_LENGTH, win=WIN_LENGTH):
         window_fn=tf.signal.hann_window
     ) #shape: [B, time_frames, freq_bins]
 
+    stft_output = tf.transpose(stft_output, perm=[0, 2, 1])  # [B, time, freq] -> [B, freq, time]
+
 
     mag   = tf.abs(stft_output)
     phase = tf.math.angle(stft_output)
@@ -28,15 +30,17 @@ def wav_to_mag_phase(waveform, n_fft=N_FFT, hop=HOP_LENGTH, win=WIN_LENGTH):
 def mag_phase_to_wav(mag, phase, n_fft=N_FFT, hop=HOP_LENGTH, win=WIN_LENGTH, target_len=None):
 
     # U-Net decder can produce a magnitude that is 1–2 bins smaller than the original phase due to _match_size crops on odd dimensions.
-    min_time = tf.minimum(tf.shape(mag)[1], tf.shape(phase)[1])
-    min_freq = tf.minimum(tf.shape(mag)[2], tf.shape(phase)[2])
+    min_freq = tf.minimum(tf.shape(mag)[1], tf.shape(phase)[1])
+    min_time = tf.minimum(tf.shape(mag)[2], tf.shape(phase)[2])
 
-    mag   = mag[:, :min_time, :min_freq]
-    phase = phase[:, :min_time, :min_freq]
+    mag   = mag[:, :min_freq, :min_time]
+    phase = phase[:, :min_freq, :min_time]
     
     real = mag * tf.cos(phase)
     imag = mag * tf.sin(phase)
     stft_complex = tf.complex(real, imag)
+
+    stft_complex = tf.transpose(stft_complex, perm=[0, 2, 1])
 
     inverse_window_fn = tf.signal.inverse_stft_window_fn(
         frame_step=hop,

@@ -62,7 +62,7 @@ def load_model(weights_path):
 
     model = build_unet()
 
-    dummy_input = tf.zeros((1, 497, 257, 1))
+    dummy_input = tf.zeros((1, 257, 497, 1))
     model(dummy_input, training=False)
 
     load_weights(model, weights_path)
@@ -96,12 +96,12 @@ def enhance_audio(model, noisy_wav):
 
     magnitude, phase = wav_to_mag_phase(noisy_tensor)
 
-    # [1, T, F] → [1, T, F, 1]  # channel
+    # [1, F, T] → [1, F, T, 1]  # channel
     magnitude = tf.expand_dims(magnitude, axis=-1)
 
     enhanced_magnitude = model(magnitude, training=False)
 
-    # [1, T, F, 1] → [1, T, F]  # remove channel
+    # [1, F, T, 1] → [1, F, T]  # remove channel
     enhanced_magnitude = tf.squeeze(
         enhanced_magnitude,
         axis=-1

@@ -26,7 +26,7 @@ def get_spectrogram(audio):
 
     magnitude, _ = wav_to_mag_phase(tf.expand_dims(audio, axis=0))
 
-    # [1, T, F] → [T, F]
+    # [1, F, T] → [F, T]
     magnitude = magnitude[0]
 
     # db = 20 * log10(magnitude)
@@ -40,7 +40,7 @@ def plot_spectrogram(audio, title, axis):
     spectrogram = get_spectrogram(audio)
 
     image = axis.imshow(
-        spectrogram.T, #transpose => x : time, y : frequency
+        spectrogram,
         aspect="auto",
         origin="lower",
         cmap="viridis",
@@ -161,16 +161,16 @@ def plot_results(
     noisy_spectrogram = get_spectrogram(noisy)
     enhanced_spectrogram = get_spectrogram(enhanced)
 
-    min_time = min(noisy_spectrogram.shape[0], enhanced_spectrogram.shape[0])
-
-    difference = (enhanced_spectrogram[:min_time, :] - noisy_spectrogram[:min_time, :])
+    min_freq = min(noisy_spectrogram.shape[0], enhanced_spectrogram.shape[0])
+    min_time = min(noisy_spectrogram.shape[1], enhanced_spectrogram.shape[1])
+    difference = (enhanced_spectrogram[:min_freq, :min_time] - noisy_spectrogram[:min_freq, :min_time])
 
     figure, axis = plt.subplots(
         figsize=(10, 4)
     )
 
     image = axis.imshow(
-        difference.T,
+        difference,
         aspect="auto",
         origin="lower",
         cmap="coolwarm"

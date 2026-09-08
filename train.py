@@ -33,7 +33,7 @@ def train_step(model, optimizer, noisy_batch, clean_batch):
         noisy_mag, _ = wav_to_mag_phase(noisy_batch)
         clean_mag, _ = wav_to_mag_phase(clean_batch)
 
-        # Add channel dimension: [B, T, F] → [B, T, F, 1] model expects 4D input for Conv2D layers
+        # Add channel dimension: [B, F, T] → [B, F, T, 1] model expects 4D input for Conv2D layers
         noisy_input  = tf.expand_dims(noisy_mag, axis=-1)
         clean_target = tf.expand_dims(clean_mag, axis=-1)
 
@@ -113,7 +113,7 @@ def train():
 
 
     # Initialize weights with a dummy forward pass (TF lazy-initializes layers)
-    dummy = tf.zeros([1, 497, 257, 1], dtype=tf.float32)
+    dummy = tf.zeros([1, 257, 497, 1], dtype=tf.float32)
     model(dummy, training=False)
     print(f"  Model parameters: {model.count_params():,}")
 
@@ -193,3 +193,5 @@ def train():
 
 if __name__ == "__main__":
     train()
+
+
